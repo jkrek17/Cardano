@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'cardano-node'
+    static_configs:
+      - targets: ['cardano-node:12798']
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    scheme: 'http'

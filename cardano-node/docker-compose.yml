@@ -1,0 +1,78 @@
+services:
+  cardano-node:
+    image: ghcr.io/intersectmbo/cardano-node:9.2.1
+    container_name: cardano-node
+    volumes:
+      - ${DATA_DIR}:/data
+      - ${IPC_DIR}:/ipc
+      - ./config.yaml:/config/config.yaml
+      - ./byron-genesis.json:/config/byron-genesis.json
+      - ./shelley-genesis.json:/config/shelley-genesis.json
+      - ./alonzo-genesis.json:/config/alonzo-genesis.json
+      - ./conway-genesis.json:/config/conway-genesis.json
+      - ./topology.json:/config/topology.json
+    ports:
+      - "${PORT}:${PORT}"
+      - "0.0.0.0:12798:12798"
+      - "127.0.0.1:12788:12788"
+    environment:
+      - NETWORK=mainnet
+      - CARDANO_NODE_SOCKET_PATH=/ipc/node.socket
+      - CARDANO_NODE_PORT=${PORT}
+      - CARDANO_DATABASE_PATH=/data/db
+      - CARDANO_CONFIG=/config/config.yaml
+      - CARDANO_TOPOLOGY=/config/topology.json
+      - CARDANO_BYRON_GENESIS=/config/byron-genesis.json
+      - CARDANO_SHELLEY_GENESIS=/config/shelley-genesis.json
+      - CARDANO_ALONZO_GENESIS=/config/alonzo-genesis.json
+      - CARDANO_CONWAY_GENESIS=/config/conway-genesis.json
+    entrypoint: []
+    command: >
+      /nix/store/kck95gvng9z5vnjx3cn4vjdkgy8n945r-cardano-node-exe-cardano-node-9.2.1/bin/cardano-node run
+        --config /config/config.yaml
+        --database-path /data/db
+        --topology /config/topology.json
+        --host-addr 0.0.0.0
+        --port ${PORT}
+        --socket-path /ipc/node.socket
+    restart: unless-stopped
+    networks:
+      - cardano-network
+
+  prometheus:
+    image: prom/prometheus:v2.30.3
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - cardano-node
+    networks:
+      - cardano-network
+
+  grafana:
+    image: grafana/grafana:8.2.2
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - cardano-network
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  cardano-network:
+    name: cardano-network
